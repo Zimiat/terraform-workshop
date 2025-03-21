@@ -11,10 +11,6 @@ terraform {
       source  = "hashicorp/tls"
       version = "~> 4.0"
     }
-    local = {
-      source  = "hashicorp/local"
-      version = "~> 2.0"
-    }
   }
 }
 
@@ -28,14 +24,6 @@ provider "azurerm" {
 resource "tls_private_key" "ssh_key" {
   algorithm = "RSA"
   rsa_bits  = 2048
-}
-
-###############################################################################
-# Save Private Key to Local File
-###############################################################################
-resource "local_file" "ssh_private_key_file" {
-  content  = tls_private_key.ssh_key.private_key_pem
-  filename = "id_rsa_alma"
 }
 
 ###############################################################################
@@ -97,7 +85,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
   admin_username                  = "azureuser"
   network_interface_ids           = [azurerm_network_interface.nic.id]
 
-  # Use generated SSH public key
+  # Use the generated SSH public key
   admin_ssh_key {
     username   = "azureuser"
     public_key = tls_private_key.ssh_key.public_key_openssh
@@ -121,14 +109,16 @@ resource "azurerm_linux_virtual_machine" "vm" {
 ###############################################################################
 # Outputs
 ###############################################################################
-# Public IP
+output "ssh_private_key" {
+  value = nonsensitive(tls_private_key.ssh_key.private_key_pem)
+}
+
 output "public_ip" {
-  description = "Public IP address of the VM"
+  description = "Public IP address of the VM."
   value       = azurerm_public_ip.public_ip.ip_address
 }
 
-# SSH command - references the saved local key file
 output "ssh_command" {
-  description = "SSH command to connect to the VM"
-  value       = "ssh -i id_rsa_alma azureuser@${azurerm_public_ip.public_ip.ip_address}"
+  description = "Example SSH command to connect (once you've saved the private key)."
+  value       = "ssh -i /path/to/private_key.pem azureuser@${azurerm_public_ip.public_ip.ip_address}"
 }
